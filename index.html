@@ -1,0 +1,91 @@
+<html lang="en">
+<head>
+    <title>Network Visualizer</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="stylesheet" href="./static/css/bootstrap.min.css">
+    <link rel="stylesheet" href="./static/css/select2.min.css">
+    <link rel="stylesheet" href="./static/css/main.css">
+</head>
+<body>
+<main class="m-4">
+    <div class="container-fluid">
+        <div class="row h-75">
+            <div class="border col-3">
+                <h4 class="text-center mt-3">Filter</h4>
+                <div class="row-cols-1 d-flex flex-column my-5">
+                    <label for="name-select" class="text-center">Select Node Names</label>
+                    <select id="name-select" class="m-auto w-100" multiple>
+                    </select>
+                </div>
+                <div class="row-cols-1 d-flex flex-column my-5">
+                    <label for="type-select" class="text-center">Select Connection Types</label>
+                    <select id="type-select" class="m-auto w-100" multiple>
+                    </select>
+                </div>
+                <button id="update-button" class="btn btn-outline-dark btn-block w-50 mx-auto">Update Plot</button>
+            </div>
+            <div class="border col-7">
+                <div class="w-100 h-75">
+                    <svg id="network" class="w-100 h-100">
+                    </svg>
+                </div>
+                <div class="w-100 h-25">
+                    <svg id="totals" class="w-100 h-100">
+                    </svg>
+                </div>
+            </div>
+            <div class="border col-2">
+                <h4 class="text-center mt-3">Options</h4>
+                <div class="form-check text-center mt-5">
+                    <input class="form-check-input" type="checkbox" value="" id="show-aux-nodes">
+                    <label class="form-check-label" for="show-aux-nodes">Show Auxiliary Nodes</label>
+                </div>
+                <div id="force-options" class="form-group">
+                    <label class="w-100 text-center mt-5">
+                        Charge Strength:
+                        <output id="charge-strength-output">-30</output>
+                        <input class="w-100" id="charge-strength" type="range" min="-500" max="100" value="-30"
+                               step=".1" oninput="d3.select('#charge-strength-output').text(value);">
+                    </label>
+                    <label class="w-100 text-center mt-3">
+                        Max Distance:
+                        <output id="charge-max-output">2000</output>
+                        <input class="w-100" id="charge-max" type="range" min="0" max="2000" value="2000"
+                               step=".1" oninput="d3.select('#charge-max-output').text(value);">
+                    </label>
+                    <label class="w-100 text-center mt-3">
+                        X Strength:
+                        <output id="x-strength-output">.1</output>
+                        <input class="w-100" id="x-strength" type="range" min="0" max="0.25" value=".1"
+                               step="0.01" oninput="d3.select('#x-strength-output').text(value);">
+                    </label>
+                    <label class="w-100 text-center mt-3">
+                        Y Strength:
+                        <output id="y-strength-output">.1</output>
+                        <input class="w-100" id="y-strength" type="range" min="0" max="0.25" value=".1"
+                               step="0.01" oninput="d3.select('#y-strength-output').text(value);">
+                    </label>
+                    <label class="w-100 text-center mt-3">
+                        Link Distance:
+                        <output id="link-distance-output">30</output>
+                        <input class="w-100" id="link-distance" type="range" min="0" max="500" value="30"
+                               step="1" oninput="d3.select('#link-distance-output').text(value);">
+                    </label>
+                </div>
+            </div>
+        </div>
+        <div id="drop-area" class="form-group border w-75 mx-auto mt-3">
+            <p class="text-center mt-3">Drag or choose a file to read.</p>
+            <input id="file-select" class="form-control w-50 mx-auto my-3" type="file" accept="text/csv">
+            <p class="text-center mt-3">CSV column names: source, target, type, datetime</p>
+        </div>
+    </div>
+</main>
+<script src="./static/js/jquery-3.4.1.slim.min.js"></script>
+<script src="./static/js/bootstrap.bundle.min.js"></script>
+<script src="./static/js/select2.min.js"></script>
+<script src="./static/js/d3.v5.min.js"></script>
+<script src="./static/js/visualize.js"></script>
+</body>
+</html>
