@@ -1,35 +1,44 @@
 /** JQuery selectors. */
+const fileModal = $('#file-modal');
 const fileSelect = $("#file-select");
 const dropArea = $("#drop-area");
-
-const nameSelect = $("#name-select");
-const typeSelect = $("#type-select");
-const updateButton = $("#update-button");
-
-const auxNode = $("#show-aux-nodes");
+const nameSelectJQuery = $("#name-select");
+const typeSelectJQuery = $("#type-select");
+const auxNode = $("#aux-button button");
 const forceOptions = $("#force-options input");
-
 const networkGraphJQuery = $("#network")
 const totalsGraphJQuery = $("#totals");
+const summaryTableJQuery = $("#summary-table");
 
 /** D3 selectors. */
 const networkGraphD3 = d3.select("#network");
 const totalsGraphD3 = d3.select("#totals")
+const nameSelectD3 = d3.select("#name-select");
+const typeSelectD3 = d3.select("#type-select");
+const dragHandler = d3.drag().on("start", dragstart).on("drag", drag).on("end", dragend);
 
 /** Datetime formats. */
 const parseDate = d3.timeParse("%Y-%m-%d");
 const formatDate = d3.timeFormat("%Y-%m-%d");
 const parseDateTime = d3.timeParse("%Y-%m-%d %H:%M:%S");
+const formatDateTime = d3.timeFormat("%b %d %Y %H:%M:%S");
 
 /** Data structures. */
-const connections = []
+const allNames = new Set();
+const allTypes = new Set();
 const selectedNames = new Set();
 const selectedTypes = new Set();
+const nodes = [];
+const edges = [];
 
-/** Network variables. */
-let nodes = [];
-let edges = [];
+/** Global variables. */
 let dateRange = [];
+let brushSelection = null;
+let dateExtent = null;
+let dateScale = null;
+let brush = null;
+let dataTable = null;
+let filteredEdges = null;
 
 /** Network forces. */
 const force = d3.forceSimulation(nodes)
@@ -38,19 +47,7 @@ const force = d3.forceSimulation(nodes)
     .force("collide", d3.forceCollide().strength(1).radius(5))
     .force("x", d3.forceX(networkGraphJQuery.width() / 2))
     .force("y", d3.forceY(networkGraphJQuery.height() / 2))
-    .on("tick", function()
-    {
-        networkGraphD3.selectAll(".edge .path")
-            .attr("x1", d => d.source.x)
-            .attr("y1", d => d.source.y)
-            .attr("x2", d => d.target.x)
-            .attr("y2", d => d.target.y);
-        networkGraphD3.selectAll(".edge .label")
-            .attr("x", d => (d.source.x + d.target.x) / 2)
-            .attr("y", d => (d.source.y + d.target.y) / 2);
-        networkGraphD3.selectAll(".node")
-            .attr("transform", d => `translate(${d.x}, ${d.y})`);
-    });
+    .on("tick", tickForces);
 
 updateForces();
 
@@ -66,53 +63,50 @@ function updateForces()
 /** Plotting functions. */
 function plotTotals(totals)
 {
-    let marginBottom = 20;
+    let margin = {t: 10, r: 10, b: 20, l: 25};
 
-    let xScale = d3.scaleTime()
-        .domain(d3.extent(totals, d => d.date))
-        .range([0, totalsGraphJQuery.width()]);
+    dateScale = dateScale || d3.scaleTime()
+        .domain(dateExtent)
+        .range([margin.l, totalsGraphJQuery.width() - margin.r]);
 
     let yScale = d3.scaleLinear()
-        .domain([0, d3.max(totals, d => d.total)])
-        .range([totalsGraphJQuery.height() - marginBottom, 0]);
+        .domain([0, d3.max(totals, d => d.total) * 1.1])
+        .range([totalsGraphJQuery.height() - margin.b, margin.t]);
 
-    let area = d3.area()
-        .curve(d3.curveMonotoneX)
-        .x(d => xScale(d.date))
-        .y0(yScale(0))
-        .y1(d => yScale(d.total));
-
-    let brush = d3.brushX()
-        .extent([[0, 0], [totalsGraphJQuery.width(), totalsGraphJQuery.height() - marginBottom]])
-        .on("brush end", function()
+    brush = d3.brushX()
+        .extent([[margin.l, margin.t], [totalsGraphJQuery.width() - margin.r, totalsGraphJQuery.height() - margin.b]])
+        .on("brush", () =>
         {
-            dateRange = [xScale.invert(d3["event"]["selection"][0]), xScale.invert(d3["event"]["selection"][1])]
+            brushSelection = [d3["event"]["selection"][0], d3["event"]["selection"][1]]
+            dateRange = [dateScale.invert(brushSelection[0]), dateScale.invert(brushSelection[1])]
             plotNetwork();
+        }).on("end", () =>
+        {
+            updateTable();
         });
 
-    totalsGraphD3.select("path").remove();
-    totalsGraphD3.selectAll("g").remove();
-
-    totalsGraphD3.append("path")
-        .datum(totals)
-        .attr("fill", "steelblue")
-        .attr("d", area);
-
-    totalsGraphD3.append("g")
-        .attr("transform", `translate(0, ${totalsGraphJQuery.height() - marginBottom})`)
-        .call(d3.axisBottom(xScale).tickFormat(d3.timeFormat("%m-%Y")));
-
-    totalsGraphD3.append("g")
+    totalsGraphD3.select("#brush")
         .call(brush)
-        .call(brush.move, [0, totalsGraphJQuery.width()]);
+        .call(brush.move, brushSelection || [margin.l, totalsGraphJQuery.width() - margin.r]);
+
+    totalsGraphD3.select("#x-axis")
+        .attr("transform", `translate(0, ${totalsGraphJQuery.height() - margin.b})`)
+        .call(d3.axisBottom(dateScale).tickFormat(d3.timeFormat("%m-%Y")));
+
+    totalsGraphD3.select("#y-axis")
+        .attr("transform", `translate(${margin.l}, 0)`)
+        .call(d3.axisLeft(yScale));
+
+    totalsGraphD3.select("#scatter").selectAll("circle").data(totals).join("circle")
+        .attr("r", 2).attr("cx", d => dateScale(d.date)).attr("cy", d => yScale(d.total));
 }
 
 function plotNetwork()
 {
-    let filteredEdges = filterEdges();
+    filteredEdges = filterEdges();
     let filteredNodes = filterNodes(filteredEdges);
 
-    networkGraphD3.selectAll(".edge")
+    networkGraphD3.select("#edges").selectAll(".edge")
         .data(filteredEdges)
         .join(
             enter =>
@@ -128,16 +122,15 @@ function plotNetwork()
             },
             exit => exit.remove());
 
-    networkGraphD3.selectAll(".node")
+    networkGraphD3.select("#nodes").selectAll(".node")
         .data(filteredNodes)
         .join(
             enter =>
             {
-                let g = enter.append("g").attr("class", "node").call(d3.drag()
-                    .on("start", dragstart)
-                    .on("drag", drag)
-                    .on("end", dragend));
-                g.append("circle").attr("r", 5).style("fill", d => selectedNames.has(d.name) ? "red" : "black");
+                let g = enter.append("g").attr("class", "node").call(dragHandler).on("click", d => clickToggle(d.name))
+                g.append("circle").attr("r", 5).style("fill", d => selectedNames.has(d.name) ? "red" : "black")
+                    .on('mouseover.fade', d => fade(d, 0.1))
+                    .on('mouseout.fade', d => fade(d, 1));
                 g.append("text").text(d => d.name);
             },
             update =>
@@ -152,63 +145,72 @@ function plotNetwork()
     force.alpha(1).alphaTarget(0).restart();
 }
 
+function fade(n, opacity)
+{
+    networkGraphD3.select("#nodes").selectAll(".node")
+        .style('fill-opacity', d => n === d || isConnected(n, d) ? 1 : opacity);
+
+    networkGraphD3.select("#edges").selectAll(".edge")
+        .style('stroke-opacity', e => (e.source === n || e.target === n ? 1 : opacity))
+        .style('fill-opacity', e => (e.source === n || e.target === n ? 1 : opacity));
+}
+
+function isConnected(a, b)
+{
+    return filteredEdges.find(d => (d.source === a && d.target === b) || (d.source === b && d.target === a));
+}
+
 /** Data reading-transformation functions. */
 function parseData(fileURL)
 {
-    connections.length = 0;
     d3.csv(fileURL, d =>
     {
         return {
             "source": d.source,
             "target": d.target,
             "type": d.type,
-            "datetime": parseDateTime(d.datetime)
+            "date": parseDateTime(d.datetime)
         }
-    }).then(function(data)
+    }).then(function(rows)
     {
-        let nameSet = new Set();
-        let typeSet = new Set();
-
-        data.forEach(d =>
+        let tempNodes = {};
+        rows.forEach(d =>
         {
-            connections.push(d);
-            nameSet.add(d.source);
-            nameSet.add(d.target);
-            typeSet.add(d.type);
+            allNames.add(d.source);
+            allNames.add(d.target);
+            allTypes.add(d.type);
+            tempNodes[d.source] || (tempNodes[d.source] = {"name": d.source});
+            tempNodes[d.target] || (tempNodes[d.target] = {"name": d.target});
+            edges.push({"source": tempNodes[d.source], "target": tempNodes[d.target], "date": d.date, "type": d.type});
         });
 
-        let id = 0;
-        let temp = [];
-        nameSet.forEach(d => temp.push({id: ++id, text: d}))
-        nameSelect.select2({data: temp, closeOnSelect: false});
-
-        id = 0;
-        temp = [];
-        typeSet.forEach(d => temp.push({id: ++id, text: d}))
-        typeSelect.select2({data: temp, closeOnSelect: false});
+        dateExtent = d3.extent(rows, d => parseDate(formatDate(d.date)));
+        dateExtent[0] = d3.timeDay.offset(dateExtent[0], -7);
+        Object.values(tempNodes).forEach(d => nodes.push(d));
+        allNames.forEach(d => selectedNames.add(d));
+        allTypes.forEach(d => selectedTypes.add(d))
+        nameSelectD3.selectAll("button:not(.keep)").data(Array.from(allNames)).join("button")
+            .on("click", updateNameSelect).attr("data-toggle", "button")
+            .attr("class", "col btn btn btn-light active").attr("onclick", "this.blur();").text(d => d);
+        typeSelectD3.selectAll("button:not(.keep)").data(Array.from(allTypes)).join("button")
+            .on("click", updateTypeSelect).attr("data-toggle", "button")
+            .attr("class", "col btn btn btn-light active").attr("onclick", "this.blur();").text(d => d);
+        calculateTotals()
     });
 }
 
-function filterData()
+function calculateTotals()
 {
-    nodes = {};
-    edges = [];
     let totals = {};
-    connections.forEach(d =>
+    edges.forEach(d =>
     {
-        if((selectedNames.has(d.source) || selectedNames.has(d.target)) && selectedTypes.has(d.type))
+        if((selectedNames.has(d.source.name) || selectedNames.has(d.target.name)) && selectedTypes.has(d.type))
         {
-            let date = formatDate(d.datetime);
+            let date = formatDate(d.date);
             totals[date] ? totals[date].total++ : totals[date] = {"date": parseDate(date), "total": 1};
-
-            nodes[d.source] || (nodes[d.source] = {"name": d.source});
-            nodes[d.target] || (nodes[d.target] = {"name": d.target});
-
-            edges.push({"source": nodes[d.source], "target": nodes[d.target], "date": parseDate(date)});
         }
     });
 
-    nodes = Object.values(nodes);
     plotTotals(Object.values(totals).sort((a, b) => { return a.date - b.date; }));
 }
 
@@ -217,9 +219,13 @@ function filterEdges()
     let filteredEdges = {};
     edges.forEach(function(d)
     {
-        if(d.date >= dateRange[0] && d.date <= dateRange[1])
+        if(d.date >= dateRange[0] && d.date <= dateRange[1] && selectedTypes.has(d.type))
         {
-            if(auxNode.prop('checked') ? true : selectedNames.has(d.source.name) && selectedNames.has(d.target.name))
+            let hasNode = auxNode.hasClass('active') ?
+                selectedNames.has(d.source.name) || selectedNames.has(d.target.name) :
+                selectedNames.has(d.source.name) && selectedNames.has(d.target.name);
+
+            if(hasNode)
             {
                 let hashForward = `${d.source.name}_${d.target.name}`;
                 let hashBackward = `${d.target.name}_${d.source.name}`;
@@ -232,6 +238,29 @@ function filterEdges()
     });
 
     return Object.values(filteredEdges);
+}
+
+function updateTable()
+{
+    let tableEdges = [];
+    edges.forEach(function(d)
+    {
+        if(d.date >= dateRange[0] && d.date <= dateRange[1] && selectedTypes.has(d.type))
+        {
+            let hasNode = auxNode.hasClass('active') ?
+                selectedNames.has(d.source.name) || selectedNames.has(d.target.name) :
+                selectedNames.has(d.source.name) && selectedNames.has(d.target.name);
+
+            if(hasNode)
+            {
+                tableEdges.push([d.source.name, d.target.name, d.type, formatDateTime(d.date)]);
+            }
+        }
+    });
+
+    dataTable.clear();
+    tableEdges.forEach(d => dataTable.row.add(d));
+    dataTable.draw();
 }
 
 function filterNodes(filteredEdges)
@@ -254,6 +283,7 @@ function loadFile()
             parseData(e.target.result);
         };
         reader.readAsDataURL(file);
+        fileModal.modal("hide");
     }
 }
 
@@ -263,16 +293,74 @@ function preventDefaults(e)
     e.preventDefault();
 }
 
-function updateNameSelect()
+function updateNameSelect(name)
 {
-    selectedNames.clear();
-    nameSelect.select2('data').forEach(d => selectedNames.add(d.text));
+    selectedNames.has(name) ? selectedNames.delete(name) : selectedNames.add(name);
+    calculateTotals();
 }
 
-function updateTypeSelect()
+function updateTypeSelect(type)
 {
-    selectedTypes.clear();
-    typeSelect.select2('data').forEach(d => selectedTypes.add(d.text));
+    selectedTypes.has(type) ? selectedTypes.delete(type) : selectedTypes.add(type);
+    calculateTotals();
+}
+
+function selectAllNames()
+{
+    allNames.forEach(d => selectedNames.add(d));
+    nameSelectJQuery.find("button:not(.active):not(.keep)").addClass("active");
+    calculateTotals();
+}
+
+function selectAllTypes()
+{
+    allTypes.forEach(d => selectedTypes.add(d));
+    typeSelectJQuery.find("button:not(.active):not(.keep)").addClass("active");
+    calculateTotals();
+}
+
+function removeAllNames()
+{
+    allNames.forEach(d => selectedNames.delete(d));
+    nameSelectJQuery.find("button.active").removeClass("active");
+    calculateTotals();
+}
+
+function removeAllTypes()
+{
+    allTypes.forEach(d => selectedTypes.delete(d));
+    typeSelectJQuery.find("button.active").removeClass("active");
+    calculateTotals();
+}
+
+function updateDateRange(newRange)
+{
+    let newSelection;
+    switch(newRange)
+    {
+        case "full":
+            let overlay = totalsGraphJQuery.find("#brush .overlay");
+            let margin = overlay.prop("x").baseVal.value
+            newSelection = [margin, overlay.prop("width").baseVal.value + margin];
+            break;
+        case "2week":
+            newSelection = [brushSelection[0], dateScale(d3.timeWeek.offset(dateScale.invert(brushSelection[0]), 2))];
+            break;
+        case "month":
+            newSelection = [brushSelection[0], dateScale(d3.timeMonth.offset(dateScale.invert(brushSelection[0]), 1))];
+            break;
+        case "quarter":
+            newSelection = [brushSelection[0], dateScale(d3.timeMonth.offset(dateScale.invert(brushSelection[0]), 3))];
+            break;
+        case "6month":
+            newSelection = [brushSelection[0], dateScale(d3.timeMonth.offset(dateScale.invert(brushSelection[0]), 6))];
+            break;
+        case "year":
+            newSelection = [brushSelection[0], dateScale(d3.timeYear.offset(dateScale.invert(brushSelection[0]), 1))];
+            break;
+    }
+
+    totalsGraphD3.select("#brush").call(brush.move, newSelection);
 }
 
 function dragstart(d)
@@ -295,12 +383,29 @@ function dragend(d)
     d.fy = null;
 }
 
+function tickForces()
+{
+    networkGraphD3.selectAll(".edge .path")
+        .attr("x1", d => d.source.x)
+        .attr("y1", d => d.source.y)
+        .attr("x2", d => d.target.x)
+        .attr("y2", d => d.target.y);
+    networkGraphD3.selectAll(".edge .label")
+        .attr("x", d => (d.source.x + d.target.x) / 2)
+        .attr("y", d => (d.source.y + d.target.y) / 2);
+    networkGraphD3.selectAll(".node")
+        .attr("transform", d => `translate(${d.x}, ${d.y})`);
+}
+
+function clickToggle(name)
+{
+    nameSelectJQuery.find(`button:contains(${name})`).toggleClass("active");
+    updateNameSelect(name);
+}
+
 /** JQuery binding. */
 $(document).ready(function()
 {
-    nameSelect.select2().on("select2:close", updateNameSelect);
-    typeSelect.select2().on("select2:close", updateTypeSelect);
-
     fileSelect.on("change", loadFile);
     dropArea.on({
         "dragenter": preventDefaults,
@@ -315,8 +420,20 @@ $(document).ready(function()
         }
     });
 
-    updateButton.on("click", filterData);
-
-    auxNode.on("input", plotNetwork);
+    auxNode.on("click", () =>
+    {
+        auxNode.hasClass("active") ? auxNode.removeClass("active") : auxNode.addClass("active");
+        plotNetwork();
+        updateTable();
+    });
     forceOptions.on("input", updateForces);
+    fileModal.modal({backdrop: "static"});
+    $.fn.dataTable.moment("MMM D YYYY H:m:s");
+    dataTable = summaryTableJQuery.DataTable({
+        columns: [{title: "Source"}, {title: "Target"}, {title: "Type"}, {title: "Datetime"}],
+        order: [3, "asc"],
+        bLengthChange: false,
+        info: false,
+        deferRender: true
+    });
 });

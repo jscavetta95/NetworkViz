@@ -1,12 +1,11 @@
-.area {
-    fill: steelblue;
-    clip-path: url(#clip);
+button {
+    font-size: 0.80rem !important;
 }
 
-#node-div .select2-selection--multiple {
-    height: 40vh;
+label {
+    font-size: 0.80rem !important;
 }
 
-#connection-div .select2-selection--multiple {
-    height: 10vh;
+#summary-table_wrapper * {
+    font-size: 0.80rem !important;
 }
