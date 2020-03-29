@@ -106,18 +106,23 @@ function plotNetwork()
     filteredEdges = filterEdges();
     let filteredNodes = filterNodes(filteredEdges);
 
+    let edgeScale = d3.scaleLinear()
+        .domain([d3.min(filteredEdges, d => d.total), d3.max(filteredEdges, d => d.total)])
+        .range([1, 5]);
+
     networkGraphD3.select("#edges").selectAll(".edge")
         .data(filteredEdges)
         .join(
             enter =>
             {
                 let g = enter.append("g").attr("class", "edge");
-                g.append("line").attr("class", "path").style("stroke", "#ccc");
+                g.append("line").attr("class", "path")
+                    .style("stroke", "#ccc").style("stroke-width", d => edgeScale(d.total));
                 g.append("text").attr("class", "label").text(d => d.total);
             },
             update =>
             {
-                update.select("line").style("stroke", "#ccc");
+                update.select("line").style("stroke", "#ccc").style("stroke-width", d => edgeScale(d.total));
                 update.select("text").text(d => d.total);
             },
             exit => exit.remove());
