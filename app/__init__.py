@@ -10,8 +10,8 @@ def create_app():
     app.register_blueprint(main_blueprint)
 
     def start_server():
-        serve(app, host="127.0.0.1", port=8080)
+        serve(app, host="127.0.0.1", port=5000)
 
-    ui = FlaskUI(app, maximized=True, server=start_server, host="127.0.0.1", port=8080)
+    ui = FlaskUI(app, maximized=True, server=start_server, host="127.0.0.1", port=5000)
 
     return ui

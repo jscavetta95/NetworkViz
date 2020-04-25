@@ -1,22 +1,36 @@
+import itertools
+
 import networkx as nx
 import pandas as pd
 
-df = pd.read_feather("data/data.feather").rename({'destination': 'target', 'etype': 'type',
-                                                  'time_stamp': 'datetime'}, axis=1)
-graph = nx.read_gpickle("data/graph.gpickle")
-all_nodes = df.source.append(df.target).unique().to_list()
 
+class GraphParser:
 
-def find_connected_nodes(selected_nodes):
-    possible_people_to_consider = set(selected_nodes)
-    list_of_connections = set()
+    def __init__(self):
+        print("Loading data, this may take a few minutes...")
+        self.df = pd.read_feather("data/data.feather").rename({'destination': 'target', 'etype': 'type',
+                                                               'time_stamp': 'datetime'}, axis=1)
+        self.graph = nx.read_gpickle("data/graph.gpickle")
+        self.all_nodes = self.df.source.append(self.df.target).unique().to_list()
 
-    for previous, current in zip(selected_nodes[:-1], selected_nodes[1:]):
-        list_of_connections = list_of_connections | set(nx.common_neighbors(graph, previous, current))
+    def find_connected_nodes(self, selected_nodes, ignore_list, min_connections, all_connections):
+        node_set = set(selected_nodes)
+        ignore_set = set(ignore_list)
+        connection_set = set()
 
-    possible_connections = list_of_connections.union(possible_people_to_consider)
+        for previous, current in itertools.combinations(selected_nodes, 2):
+            connection_set = connection_set | set(nx.common_neighbors(self.graph, previous, current))
 
-    if possible_connections == possible_people_to_consider:
-        return df[df['source'].isin(possible_people_to_consider) | df['target'].isin(possible_people_to_consider)]
-    else:
-        return df[df['source'].isin(possible_connections) & df['target'].isin(possible_connections)]
+        all_nodes = connection_set.union(node_set)
+        all_nodes = all_nodes.difference(ignore_set)
+
+        if all_connections or all_nodes == node_set:
+            results = self.df.loc[self.df.source.isin(all_nodes) | self.df.target.isin(all_nodes), :]
+            results = results[~(results.source.isin(ignore_set) | results.target.isin(ignore_set))]
+        else:
+            results = self.df.loc[self.df.source.isin(all_nodes) & self.df.target.isin(all_nodes), :]
+
+        filtered = results.source.append(results.target).cat.remove_unused_categories()
+        filtered = filtered.groupby(filtered).filter(lambda x: len(x) >= min_connections).unique().to_list()
+
+        return results.loc[results.source.isin(filtered) & results.target.isin(filtered), :]

@@ -6,6 +6,10 @@ label {
     font-size: 0.80rem !important;
 }
 
+input {
+    font-size: 0.80rem !important;
+}
+
 #summary-table_wrapper * {
     font-size: 0.80rem !important;
 }

@@ -2,6 +2,9 @@
 const nameSelectJQuery = $(".node-select");
 const typeSelectJQuery = $("#type-select");
 const nodeQuery = $("#node-query");
+const ignoreQuery = $("#ignore-query");
+const allConnections = $("#all-connections-button button");
+const minConnections = $("#min");
 const auxNode = $("#aux-button button");
 const forceOptions = $("#force-options input");
 const networkGraphJQuery = $("#network")
@@ -188,7 +191,12 @@ async function parseData()
     let options = {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({'nodes': nodeQuery.select2('data')}),
+        body: JSON.stringify({
+            'nodes': nodeQuery.select2('data'),
+            'ignore': ignoreQuery.select2('data'),
+            'min': minConnections.val(),
+            'all': allConnections.hasClass('active')
+        })
     };
 
     let response = await fetch(fetchURL, options);
@@ -450,6 +458,19 @@ $(document).ready(function()
             delay: 500,
             cache: true,
         },
+        minimumInputLength: 1,
+        placeholder: 'Search for a node',
+        cache: true
+    });
+
+    ignoreQuery.select2({
+        ajax: {
+            url: nodeURL,
+            dataType: 'json',
+            delay: 500,
+            cache: true,
+        },
+        minimumInputLength: 1,
         placeholder: 'Search for a node',
         cache: true
     });
@@ -458,11 +479,18 @@ $(document).ready(function()
     {
         auxNode.hasClass("active") ? auxNode.removeClass("active") : auxNode.addClass("active");
         calculateTotals();
-        //plotNetwork();
         updateTable();
     });
+
+    allConnections.on("click", () =>
+    {
+        allConnections.hasClass("active") ? allConnections.removeClass("active") : allConnections.addClass("active");
+    });
+
     forceOptions.on("input", updateForces);
+
     $.fn.dataTable.moment("MMM D YYYY H:m:s");
+
     dataTable = summaryTableJQuery.DataTable({
         columns: [{title: "Source"}, {title: "Target"}, {title: "Type"}, {title: "Datetime"}],
         order: [3, "asc"],
