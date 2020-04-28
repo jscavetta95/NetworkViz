@@ -1,6 +1,6 @@
 # NetworkViz
 
-Use run.sh to run network_viz.py using the virtual environment
+Use run.sh (unix) or run.bat (windows) to run network_viz.py using the virtual environment
 
 or
 
