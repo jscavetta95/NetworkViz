@@ -8,6 +8,7 @@ class GraphParser:
     def __init__(self):
         self.df = None
         self.all_nodes = None
+        self.connection_dict = {}
 
     def load_data(self, filename):
         if '.feather' in filename:
@@ -19,11 +20,24 @@ class GraphParser:
                                 self.df.columns[2]: "type", self.df.columns[3]: "datetime"}, inplace=True)
         self.all_nodes = self.df.source.append(self.df.target).unique().tolist()
 
+    def find_connections(self, node):
+        connected = self.df[(self.df.source == node) | (self.df.target == node)]
+        connected = set(connected.source.append(connected.target).unique())
+        return connected
+
     def common_neighbors(self, previous, current):
-        previous_connected = self.df[(self.df.source == previous) | (self.df.target == previous)]
-        previous_connected = set(previous_connected.source.append(previous_connected.target).unique())
-        current_connected = self.df[(self.df.source == current) | (self.df.target == current)]
-        current_connected = set(current_connected.source.append(current_connected.target).unique())
+        if previous in self.connection_dict:
+            previous_connected = self.connection_dict[previous]
+        else:
+            previous_connected = self.find_connections(previous)
+            self.connection_dict[previous] = previous_connected
+
+        if current in self.connection_dict:
+            current_connected = self.connection_dict[current]
+        else:
+            current_connected = self.find_connections(current)
+            self.connection_dict[current] = current_connected
+
         return previous_connected & current_connected
 
     def find_connected_nodes(self, selected_nodes, ignore_list, min_connections, all_connections):

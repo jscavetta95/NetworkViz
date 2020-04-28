@@ -159,5 +159,11 @@
     let nodeURL = "{{ url_for("main.nodes") }}";
 </script>
 <script src="{{ url_for('static', filename='js/visualize.js') }}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function()
+    {
+        setInterval(function() { fetch('http://127.0.0.1:5001/GUI-is-still-open', {mode: 'no-cors'});}, 5000);
+    });
+</script>
 </body>
 </html>
