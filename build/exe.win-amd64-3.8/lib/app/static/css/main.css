@@ -1,0 +1,23 @@
+button {
+    font-size: 0.80rem !important;
+}
+
+label {
+    font-size: 0.80rem !important;
+}
+
+input {
+    font-size: 0.80rem !important;
+}
+
+#summary-table_wrapper * {
+    font-size: 0.80rem !important;
+}
+
+.selection, .select2-dropdown {
+    font-size: 0.80rem !important;
+}
+
+.select2-selection--multiple {
+    height: 100%;
+}
