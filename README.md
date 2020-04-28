@@ -1,9 +1,11 @@
 # NetworkViz
 
-Use run.sh (unix) or run.bat (windows) to run network_viz.py using the virtual environment
+Run network_viz.exe in build/exe.win-amd64-3.8/ for Windows x64
 
 or
 
 Create your own python environment using the requirements.txt and run network_viz.py
 
-Data files will need to be unzipped inside the data folder
+To build an exe for your specific platform:
+ - install cx_freeze
+ - run 'python setup.py build'
