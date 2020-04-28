@@ -1,4 +1,7 @@
-from flask import render_template, request, jsonify
+from tkinter import Tk
+from tkinter.filedialog import askopenfilename
+
+from flask import render_template, request, jsonify, redirect, url_for
 
 from . import main
 from .parse import GraphParser
@@ -8,7 +11,13 @@ graph_parse = GraphParser()
 
 @main.route('/', methods=['GET', 'POST'])
 def index():
-    return render_template('index.html')
+    if graph_parse.loaded():
+        return render_template('index.html')
+    else:
+        Tk().withdraw()
+        filename = askopenfilename()
+        graph_parse.load_data(filename)
+        return redirect(url_for('main.index'))
 
 
 @main.route('/nodes', methods=['GET', 'POST'])

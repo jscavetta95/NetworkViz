@@ -1,6 +1,5 @@
-flask~=1.1.2
-pandas~=1.0.3
-networkx~=2.4
+flask
+pandas
 pyarrow
-flaskwebgui~=0.1.9
-waitress~=1.4.3
+flaskwebgui
+waitress
