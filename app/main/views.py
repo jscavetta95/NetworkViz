@@ -1,3 +1,4 @@
+from datetime import datetime
 from tkinter import Tk
 from tkinter.filedialog import askopenfilename
 
@@ -6,17 +7,18 @@ from flask import render_template, request, jsonify, redirect, url_for
 from . import main
 from .parse import GraphParser
 
-graph_parse = GraphParser()
+graph_parse: GraphParser = None
 
 
 @main.route('/', methods=['GET', 'POST'])
 def index():
-    if graph_parse.loaded():
+    global graph_parse
+    if graph_parse:
         return render_template('index.html')
     else:
         Tk().withdraw()
         filename = askopenfilename()
-        graph_parse.load_data(filename)
+        graph_parse = GraphParser(filename)
         return redirect(url_for('main.index'))
 
 
@@ -48,3 +50,10 @@ def filter_data():
 
     interactions_dict = interactions.to_dict(orient='records')
     return jsonify(interactions_dict)
+
+
+@main.route('/active', methods=['GET'])
+def active():
+    with open("bo.txt", "w") as f:
+        f.write(f"{datetime.now()}")
+    return '', 200

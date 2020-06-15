@@ -9,3 +9,6 @@ Create your own python environment using the requirements.txt and run network_vi
 To build an exe for your specific platform:
  - install cx_freeze
  - run 'python setup.py build'
+
+Windows:
+ - run 'venv/Scripts/python.exe setup.py build'

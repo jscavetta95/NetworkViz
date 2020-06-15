@@ -147,22 +147,26 @@
         </div>
     </div>
 </div>
-<script src="{{ url_for('static', filename='js/jquery-3.5.0.min.js') }}"></script>
-<script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
-<script src="{{ url_for('static', filename='js/jquery.dataTables.min.js') }}"></script>
-<script src="{{ url_for('static', filename='js/moment.min.js') }}"></script>
-<script src="{{ url_for('static', filename='js/datetime-moment.js') }}"></script>
-<script src="{{ url_for('static', filename='js/select2.min.js') }}"></script>
-<script src="{{ url_for('static', filename='js/d3.v5.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/lib/jquery-3.5.0.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/lib/bootstrap.bundle.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/lib/jquery.dataTables.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/lib/moment.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/lib/datetime-moment.js') }}"></script>
+<script src="{{ url_for('static', filename='js/lib/select2.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/lib/d3.v5.min.js') }}"></script>
 <script>
     let fetchURL = "{{ url_for("main.filter_data") }}";
     let nodeURL = "{{ url_for("main.nodes") }}";
 </script>
-<script src="{{ url_for('static', filename='js/visualize.js') }}"></script>
+<script src="{{ url_for('static', filename='js/app/datahandler.js') }}"></script>
+<script src="{{ url_for('static', filename='js/app/totals.js') }}"></script>
+<script src="{{ url_for('static', filename='js/app/network.js') }}"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function()
     {
-        setInterval(function() { fetch('http://127.0.0.1:5001/GUI-is-still-open', {mode: 'no-cors'});}, 5000);
+        let url = "{{ url_for("main.active") }}";
+        fetch(url, {mode: 'no-cors'});
+        setInterval(function() { fetch(url, {mode: 'no-cors'});}, 5000);
     });
 </script>
 </body>
